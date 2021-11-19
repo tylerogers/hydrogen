@@ -29,6 +29,7 @@
     "directory": "packages/cli"
   },
   "dependencies": {
+    "@shopify/ast-utilities": "^1.1.0",
     "@types/debug": "^4.1.7",
     "chalk": "^4.1.2",
     "change-case": "^4.1.2",
@@ -39,7 +40,8 @@
     "inquirer": "^8.1.2",
     "minimist": "^1.2.5",
     "prettier": "^2.4.1",
-    "@shopify/prettier-config": "^1.1.2"
+    "@shopify/prettier-config": "^1.1.2",
+    "@endemolshinegroup/cosmiconfig-typescript-loader": "^3.0.2"
   },
   "devDependencies": {
     "@types/change-case": "^2.3.1",
@@ -47,11 +49,13 @@
     "@types/fs-extra": "^9.0.12",
     "@types/inquirer": "^7.3.3",
     "@types/minimist": "^1.2.2",
+    "@types/semver": "^7.3.9",
     "change-case": "^4.1.2",
     "faker": "^5.5.3",
     "get-port": "^5.1.1",
     "inquirer": "^8.1.2",
     "playwright-chromium": "^1.13.0",
+    "semver": "^7.3.5",
     "sirv": "^1.0.14",
     "typescript": "^4.2.3",
     "vite": "^2.6.14"
