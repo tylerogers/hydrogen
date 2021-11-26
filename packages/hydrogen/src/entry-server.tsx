@@ -44,6 +44,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url,
     {context, request, isReactHydrationRequest, dev}
   ) {
+    console.log('\nServer: render');
     const state = isReactHydrationRequest
       ? JSON.parse(url.searchParams?.get('state') ?? '{}')
       : {pathname: url.pathname, search: url.search};
@@ -82,6 +83,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url: URL,
     {context, request, response, template, dev}
   ) {
+    console.log('\nServer: stream');
     const state = {pathname: url.pathname, search: url.search};
 
     const {ReactApp, componentResponse} = buildReactApp({
@@ -178,6 +180,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url: URL,
     {context, request, response, dev}
   ) {
+    console.log('\nServer: hydrate');
     const state = JSON.parse(url.searchParams.get('state') || '{}');
 
     const {ReactApp, componentResponse} = buildReactApp({

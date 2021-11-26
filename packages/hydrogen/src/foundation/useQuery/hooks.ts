@@ -27,6 +27,7 @@ export function useQuery<T>(
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
 ): T {
+  console.log(`Loading ${findQueryname(key)} query`);
   const cacheKey = hashKey(key);
   const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
   const status = suspensePromise.status;
@@ -37,6 +38,7 @@ export function useQuery<T>(
     throw suspensePromise.result;
   } else if (status === SuspensePromise.SUCCESS) {
     suspensePromises.delete(cacheKey);
+    logg(`${findQueryname(key)} query took ${suspensePromise.queryDuration}ms`);
     return suspensePromise.result as T;
   }
 
@@ -54,7 +56,26 @@ export function preloadQuery<T>(
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
 ): void {
+  console.log(`Preloading ${findQueryname(key)} query`);
   getSuspensePromise<T>(key, queryFn, queryOptions);
+}
+
+function findQueryname(key: QueryKey) {
+  const match = (typeof key === 'string' ? key : key.join()).match(
+    /query ([^\s\()]*)\s?(|\(\{)/
+  );
+  if (match && match.length > 1) {
+    return match[1];
+  }
+  return '<unknown>';
+}
+
+function log(...text: any[]) {
+  console.log('\x1b[33m%s\x1b[0m', ...text);
+}
+
+function logg(...text: any[]) {
+  console.log('\x1b[32m%s\x1b[0m', ...text);
 }
 
 function getSuspensePromise<T>(
@@ -69,6 +90,7 @@ function getSuspensePromise<T>(
       cachedQueryFnBuilder(key, queryFn, queryOptions)
     );
     suspensePromises.set(cacheKey, suspensePromise);
+    console.log(`${findQueryname(key)} SuspensePromise created`);
   }
   return suspensePromise as SuspensePromise<T>;
 }
@@ -98,6 +120,8 @@ function cachedQueryFnBuilder<T>(
     async function generateNewOutput() {
       return await queryFn();
     }
+
+    log('cachedQueryFn', cacheResponse);
 
     if (cacheResponse) {
       const [output, response] = cacheResponse;

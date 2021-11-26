@@ -19,18 +19,26 @@ export class SuspensePromise<T> {
   status: string = SuspensePromise.PENDING;
   promise: Promise<T>;
   result: T | undefined;
+  queryDuration = 0;
 
   constructor(promiseFn: () => Promise<T>) {
+    const startTime: number = Date.now();
     this.promise = promiseFn();
     this.promise.then(
       (r) => {
+        this._markQueryDuration(startTime);
         this.status = SuspensePromise.SUCCESS;
         this.result = r;
       },
       (e) => {
+        this._markQueryDuration(startTime);
         this.status = SuspensePromise.ERROR;
         this.result = e;
       }
     );
+  }
+
+  _markQueryDuration(startTime: number) {
+    this.queryDuration = Date.now() - startTime;
   }
 }

@@ -51,10 +51,13 @@ function getKeyUrl(key: string) {
 export async function getItemFromCache(
   key: QueryKey
 ): Promise<undefined | [any, Response]> {
+  log(`get item from cache ${findQueryname(key)}`);
   const cache = getCache();
   if (!cache) {
     return;
   }
+
+  log('Cache exists');
 
   const url = getKeyUrl(hashKey(key));
   const request = new Request(url);
@@ -62,7 +65,23 @@ export async function getItemFromCache(
   const response = await cache.match(request);
   if (!response) return;
 
+  log('Cache matched');
+
   return [await response.json(), response];
+}
+
+function findQueryname(key: QueryKey) {
+  const match = (typeof key === 'string' ? key : key.join()).match(
+    /query ([^\s\()]*)\s?(|\(\{)/
+  );
+  if (match && match.length > 1) {
+    return match[1];
+  }
+  return '<unknown>';
+}
+
+function log(...text: any[]) {
+  console.log('\x1b[33m%s\x1b[0m', ...text);
 }
 
 /**
@@ -73,6 +92,7 @@ export async function setItemInCache(
   value: any,
   userCacheOptions?: CacheOptions
 ) {
+  log(`set item in cache ${findQueryname(key)}`);
   const cache = getCache();
   if (!cache) {
     return;
