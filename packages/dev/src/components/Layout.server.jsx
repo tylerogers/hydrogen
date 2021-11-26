@@ -62,7 +62,7 @@ export default function Layout({children, hero}) {
 }
 
 const QUERY = gql`
-  query indexContent($numCollections: Int!) {
+  query layoutContent($numCollections: Int!) {
     shop {
       name
     }

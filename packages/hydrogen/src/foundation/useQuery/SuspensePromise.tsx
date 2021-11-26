@@ -20,25 +20,26 @@ export class SuspensePromise<T> {
   promise: Promise<T>;
   result: T | undefined;
   queryDuration = 0;
+  startTimestamp = 0;
 
   constructor(promiseFn: () => Promise<T>) {
-    const startTime: number = Date.now();
+    this.startTimestamp = Date.now();
     this.promise = promiseFn();
     this.promise.then(
       (r) => {
-        this._markQueryDuration(startTime);
+        this._markQueryDuration();
         this.status = SuspensePromise.SUCCESS;
         this.result = r;
       },
       (e) => {
-        this._markQueryDuration(startTime);
+        this._markQueryDuration();
         this.status = SuspensePromise.ERROR;
         this.result = e;
       }
     );
   }
 
-  _markQueryDuration(startTime: number) {
-    this.queryDuration = Date.now() - startTime;
+  _markQueryDuration() {
+    this.queryDuration = Date.now() - this.startTimestamp;
   }
 }

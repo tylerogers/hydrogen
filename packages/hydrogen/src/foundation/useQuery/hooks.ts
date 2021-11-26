@@ -39,6 +39,7 @@ export function useQuery<T>(
   } else if (status === SuspensePromise.SUCCESS) {
     suspensePromises.delete(cacheKey);
     logg(`${findQueryname(key)} query took ${suspensePromise.queryDuration}ms`);
+    logg(`Resolve time: ${Date.now() - suspensePromise.startTimestamp}ms`);
     return suspensePromise.result as T;
   }
 
@@ -56,7 +57,7 @@ export function preloadQuery<T>(
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
 ): void {
-  console.log(`Preloading ${findQueryname(key)} query`);
+  logg(`Preloading ${findQueryname(key)} query`);
   getSuspensePromise<T>(key, queryFn, queryOptions);
 }
 
