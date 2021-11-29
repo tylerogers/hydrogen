@@ -13,6 +13,7 @@
   "scripts": {
     "dev-lib": "yarn workspace @shopify/hydrogen dev",
     "dev-server": "cross-env LOCAL_DEV=true VITE_INSPECT=1 yarn workspace dev dev",
+    "dev-worker": "cross-env LOCAL_DEV=true VITE_INSPECT=1 yarn workspace dev dev-worker",
     "build": "run-s build-lib build-dev build-cli build-lint",
     "build-lib": "yarn workspace @shopify/hydrogen build",
     "build-cli": "yarn workspace @shopify/hydrogen-cli build",

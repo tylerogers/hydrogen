@@ -5,7 +5,7 @@ import {
   ProductProviderFragment,
   Image,
 } from '@shopify/hydrogen';
-import {Switch} from 'react-router-dom';
+import {Switch, useParams} from 'react-router-dom';
 import {Suspense} from 'react';
 import gql from 'graphql-tag';
 
@@ -31,7 +31,7 @@ function AppContent({serverState}) {
   const pages = import.meta.globEager('./pages/**/*.server.[jt]sx');
 
   preloadPageQueries();
-  preloadTemplateQuery(serverState);
+  // preloadTemplateQuery(serverState);
 
   return (
     <CartProvider>
@@ -56,6 +56,15 @@ function preloadTemplateQuery({pathname, country = {isoCode: 'US'}}) {
       },
     });
     preloadShopQuery({query: WELCOME_QUERY});
+  } else if (/\/products\//.test(pathname)) {
+    const {handle} = useParams();
+    preloadShopQuery({
+      query: PRODUCT_QUERY,
+      variables: {
+        country: country.isoCode,
+        handle,
+      },
+    });
   }
 }
 
@@ -120,4 +129,38 @@ const WELCOME_QUERY = gql`
       }
     }
   }
+`;
+
+const PRODUCT_QUERY = gql`
+  query product(
+    $country: CountryCode
+    $handle: String!
+    $includeReferenceMetafieldDetails: Boolean = true
+    $numProductMetafields: Int = 20
+    $numProductVariants: Int = 250
+    $numProductMedia: Int = 6
+    $numProductVariantMetafields: Int = 10
+    $numProductVariantSellingPlanAllocations: Int = 0
+    $numProductSellingPlanGroups: Int = 0
+    $numProductSellingPlans: Int = 0
+  ) @inContext(country: $country) {
+    product: product(handle: $handle) {
+      id
+      vendor
+      seo {
+        title
+        description
+      }
+      images(first: 1) {
+        edges {
+          node {
+            url
+          }
+        }
+      }
+      ...ProductProviderFragment
+    }
+  }
+
+  ${ProductProviderFragment}
 `;
