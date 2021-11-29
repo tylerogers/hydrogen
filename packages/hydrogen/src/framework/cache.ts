@@ -81,7 +81,7 @@ function findQueryname(key: QueryKey) {
 }
 
 function log(...text: any[]) {
-  console.log('\x1b[33m%s\x1b[0m', ...text);
+  // console.log('\x1b[33m%s\x1b[0m', ...text);
 }
 
 /**

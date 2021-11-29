@@ -27,12 +27,17 @@ export function useQuery<T>(
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
 ): T {
-  console.log(`Loading ${findQueryname(key)} query`);
+  console.log(`\nLoading ${findQueryname(key)} query`);
   const cacheKey = hashKey(key);
   const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
   const status = suspensePromise.status;
 
   if (status === SuspensePromise.PENDING) {
+    log(
+      `Warning: ${findQueryname(
+        key
+      )} query has suspended. Use preloadShopQuery or preloadQuery to prevent Suspense waterfall.`
+    );
     throw suspensePromise.promise;
   } else if (status === SuspensePromise.ERROR) {
     throw suspensePromise.result;
@@ -57,7 +62,7 @@ export function preloadQuery<T>(
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
 ): void {
-  logg(`Preloading ${findQueryname(key)} query`);
+  logg(`\nPreloading ${findQueryname(key)} query`);
   getSuspensePromise<T>(key, queryFn, queryOptions);
 }
 
@@ -121,8 +126,6 @@ function cachedQueryFnBuilder<T>(
     async function generateNewOutput() {
       return await queryFn();
     }
-
-    log('cachedQueryFn', cacheResponse);
 
     if (cacheResponse) {
       const [output, response] = cacheResponse;

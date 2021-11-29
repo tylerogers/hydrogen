@@ -4,9 +4,25 @@ import gql from 'graphql-tag';
 import {Localization} from '@shopify/hydrogen/dist/esnext/graphql/graphql-constants';
 
 export function preloadPageQueries() {
+  preloadShopName();
   preloadLayoutQuery();
   preloadLocalization();
 }
+
+function preloadShopName() {
+  preloadShopQuery({
+    query: SHOPNAME_QUERY,
+    cache: {maxAge: 60 * 60 * 12, staleWhileRevalidate: 60 * 60 * 12},
+  });
+}
+
+const SHOPNAME_QUERY = gql`
+  query shopName {
+    shop {
+      name
+    }
+  }
+`;
 
 function preloadLocalization() {
   preloadShopQuery({

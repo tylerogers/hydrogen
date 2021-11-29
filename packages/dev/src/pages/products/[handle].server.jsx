@@ -2,14 +2,11 @@ import {useShopQuery, ProductProviderFragment} from '@shopify/hydrogen';
 import {useParams} from 'react-router-dom';
 import gql from 'graphql-tag';
 
-import {preloadPageQueries} from '../preloadPageQueries';
 import ProductDetails from '../../components/ProductDetails.client';
 import NotFound from '../../components/NotFound.server';
 import Layout from '../../components/Layout.server';
 
 export default function Product({country = {isoCode: 'US'}}) {
-  preloadPageQueries();
-
   const {handle} = useParams();
   const {data} = useShopQuery({
     query: QUERY,
