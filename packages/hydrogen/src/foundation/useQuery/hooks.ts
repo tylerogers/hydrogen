@@ -6,7 +6,7 @@ import {
   setItemInCache,
   hashKey,
 } from '../../framework/cache';
-import {runDelayedFunction} from '../../framework/runtime';
+import {runDelayedFunction, getCache} from '../../framework/runtime';
 import {SuspensePromise} from './SuspensePromise';
 
 const suspensePromises: Map<string, SuspensePromise<unknown>> = new Map();
@@ -16,7 +16,8 @@ export interface HydrogenUseQueryOptions {
 }
 
 /**
- * The `useQuery` hook is a wrapper around global runtime's Cache API.
+ * The `useQuery` hook is a wrapper around Suspense calls and
+ * global runtime's Cache if it exist.
  * It supports Suspense calls on the server and on the client.
  */
 export function useQuery<T>(
@@ -42,9 +43,18 @@ export function useQuery<T>(
   } else if (status === SuspensePromise.ERROR) {
     throw suspensePromise.result;
   } else if (status === SuspensePromise.SUCCESS) {
-    suspensePromises.delete(cacheKey);
     logg(`${findQueryname(key)} query took ${suspensePromise.queryDuration}ms`);
     logg(`Resolve time: ${Date.now() - suspensePromise.startTimestamp}ms`);
+    // If we have Cache, we'll follow the cache maxAge spec before removing from SuspensePromise map
+    if (getCache()) {
+      setTimeout(() => {
+        if (suspensePromises.has(cacheKey)) {
+          suspensePromises.delete(cacheKey);
+        }
+      }, suspensePromise.maxAge);
+    } else {
+      suspensePromises.delete(cacheKey);
+    }
     return suspensePromise.result as T;
   }
 
@@ -93,7 +103,8 @@ function getSuspensePromise<T>(
   let suspensePromise = suspensePromises.get(cacheKey);
   if (!suspensePromise) {
     suspensePromise = new SuspensePromise<T>(
-      cachedQueryFnBuilder(key, queryFn, queryOptions)
+      cachedQueryFnBuilder(key, queryFn, queryOptions),
+      queryOptions?.cache?.maxAge
     );
     suspensePromises.set(cacheKey, suspensePromise);
     console.log(`${findQueryname(key)} SuspensePromise created`);
@@ -107,13 +118,6 @@ function cachedQueryFnBuilder<T>(
   queryOptions?: HydrogenUseQueryOptions
 ) {
   const resolvedQueryOptions = {
-    /**
-     * Prevent react-query from from retrying request failures. This sometimes bites developers
-     * because they will get back a 200 GraphQL response with errors, but not properly check
-     * for errors. This leads to a failed `queryFn` and react-query keeps running it, leading
-     * to a much slower response time and a poor developer experience.
-     */
-    retry: false,
     ...(queryOptions ?? {}),
   };
 
