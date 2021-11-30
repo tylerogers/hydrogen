@@ -30,7 +30,7 @@ export default function App({...serverState}) {
 function AppContent({serverState}) {
   const pages = import.meta.globEager('./pages/**/*.server.[jt]sx');
 
-  preloadPageQueries();
+  // preloadPageQueries();
   // preloadTemplateQuery(serverState);
 
   return (

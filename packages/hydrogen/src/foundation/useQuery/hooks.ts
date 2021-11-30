@@ -11,8 +11,19 @@ import {SuspensePromise} from './SuspensePromise';
 
 const suspensePromises: Map<string, SuspensePromise<unknown>> = new Map();
 
+interface ShortCache {
+  [key: string]: () => unknown;
+}
+
+let cache: ShortCache = {};
+
 export interface HydrogenUseQueryOptions {
   cache: CacheOptions;
+}
+
+export function clearShortTermCache(logText: string) {
+  logg(`Clear cache on ${logText} request`);
+  cache = {};
 }
 
 /**
@@ -30,35 +41,51 @@ export function useQuery<T>(
 ): T {
   console.log(`\nLoading ${findQueryname(key)} query`);
   const cacheKey = hashKey(key);
-  const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
-  const status = suspensePromise.status;
 
-  if (status === SuspensePromise.PENDING) {
-    log(
-      `Warning: ${findQueryname(
-        key
-      )} query has suspended. Use preloadShopQuery or preloadQuery to prevent Suspense waterfall.`
-    );
-    throw suspensePromise.promise;
-  } else if (status === SuspensePromise.ERROR) {
-    throw suspensePromise.result;
-  } else if (status === SuspensePromise.SUCCESS) {
-    logg(`${findQueryname(key)} query took ${suspensePromise.queryDuration}ms`);
-    logg(`Resolve time: ${Date.now() - suspensePromise.startTimestamp}ms`);
-    // If we have Cache, we'll follow the cache maxAge spec before removing from SuspensePromise map
-    if (getCache()) {
-      setTimeout(() => {
-        if (suspensePromises.has(cacheKey)) {
-          suspensePromises.delete(cacheKey);
-        }
-      }, suspensePromise.maxAge);
-    } else {
-      suspensePromises.delete(cacheKey);
-    }
-    return suspensePromise.result as T;
+  if (!cache[cacheKey]) {
+    let data: T;
+    let promise: Promise<void | T>;
+    cache[cacheKey] = () => {
+      if (data !== undefined) {
+        log(`Return short-term cache ${findQueryname(key)} data`);
+        // delete cache[cacheKey];
+        return data;
+      }
+      if (!promise) {
+        promise = cachedQueryFnBuilder(key, queryFn, queryOptions)().then(
+          (r) => {
+            log(`Got ${findQueryname(key)} data`);
+            data = r;
+          }
+        );
+      }
+      throw promise;
+    };
   }
+  return cache[cacheKey]() as T;
 
-  throw 'useQuery - something is really wrong if this throws';
+  // const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
+  // const status = suspensePromise.status;
+
+  // if (status === SuspensePromise.PENDING) {
+  //   throw suspensePromise.promise;
+  // } else if (status === SuspensePromise.ERROR) {
+  //   throw suspensePromise.result;
+  // } else if (status === SuspensePromise.SUCCESS) {
+  //   // If we have Cache, we'll follow the cache maxAge spec before removing from SuspensePromise map
+  //   if (getCache()) {
+  //     setTimeout(() => {
+  //       if (suspensePromises.has(cacheKey)) {
+  //         suspensePromises.delete(cacheKey);
+  //       }
+  //     }, suspensePromise.maxAge);
+  //   } else {
+  //     suspensePromises.delete(cacheKey);
+  //   }
+  //   return suspensePromise.result as T;
+  // }
+
+  // throw 'useQuery - something is really wrong if this throws';
 }
 
 /**
@@ -116,7 +143,7 @@ function cachedQueryFnBuilder<T>(
   key: QueryKey,
   queryFn: () => Promise<T>,
   queryOptions?: HydrogenUseQueryOptions
-) {
+): () => Promise<T> {
   const resolvedQueryOptions = {
     ...(queryOptions ?? {}),
   };
@@ -160,7 +187,7 @@ function cachedQueryFnBuilder<T>(
         });
       }
 
-      return output;
+      return output as T;
     }
 
     const newOutput = await generateNewOutput();
@@ -173,7 +200,7 @@ function cachedQueryFnBuilder<T>(
         await setItemInCache(key, newOutput, resolvedQueryOptions?.cache)
     );
 
-    return newOutput;
+    return newOutput as T;
   }
 
   return cachedQueryFn;
