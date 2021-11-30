@@ -1,20 +1,14 @@
-import {QueryFunctionContext, useQuery as useReactQuery} from 'react-query';
-import type {UseQueryOptions, QueryKey, QueryFunction} from 'react-query';
 import {CacheOptions} from '../../types';
 import {
   deleteItemFromCache,
   getItemFromCache,
+  hashKey,
   isStale,
   setItemInCache,
 } from '../../framework/cache';
 import {runDelayedFunction} from '../../framework/runtime';
 
-export interface HydrogenUseQueryOptions<
-  TQueryFnData = unknown,
-  TError = unknown,
-  TData = TQueryFnData,
-  TQueryKey extends QueryKey = QueryKey
-> extends UseQueryOptions<TQueryFnData, TError, TData, TQueryKey> {
+export interface HydrogenUseQueryOptions {
   cache: CacheOptions;
 }
 
@@ -23,20 +17,13 @@ export interface HydrogenUseQueryOptions<
  */
 export function useQuery<T>(
   /** A string or array to uniquely identify the current query. */
-  key: QueryKey,
+  key: string | string[],
   /** An asynchronous query function like `fetch` which returns data. */
-  queryFn: QueryFunction<T>,
+  queryFn: () => Promise<T>,
   /** Options including `cache` to manage the cache behavior of the sub-request. */
-  queryOptions?: HydrogenUseQueryOptions<T, Error, T, QueryKey>
+  queryOptions?: HydrogenUseQueryOptions
 ) {
   const resolvedQueryOptions = {
-    /**
-     * Prevent react-query from from retrying request failures. This sometimes bites developers
-     * because they will get back a 200 GraphQL response with errors, but not properly check
-     * for errors. This leads to a failed `queryFn` and react-query keeps running it, leading
-     * to a much slower response time and a poor developer experience.
-     */
-    retry: false,
     ...(queryOptions ?? {}),
   };
 
@@ -47,7 +34,7 @@ export function useQuery<T>(
     const cacheResponse = await getItemFromCache(key);
 
     async function generateNewOutput() {
-      return await queryFn({} as QueryFunctionContext);
+      return await queryFn();
     }
 
     if (cacheResponse) {
@@ -95,5 +82,32 @@ export function useQuery<T>(
     return newOutput;
   }
 
-  return useReactQuery<T, Error>(key, cachedQueryFn, resolvedQueryOptions);
+  const data = useData(key, cachedQueryFn);
+
+  return {data};
+}
+
+let cache: Record<string, any> = {};
+
+export function resetSuspenseCache() {
+  cache = {};
+}
+
+export default function useData(
+  cacheKey: string | Array<any>,
+  fetcher: () => Promise<any>
+) {
+  const key = hashKey(cacheKey);
+
+  if (!cache[key]) {
+    console.log(`fetching ${key}`);
+    let data: any;
+    let promise: Promise<any>;
+    cache[key] = () => {
+      if (data !== undefined) return data;
+      if (!promise) promise = fetcher().then((r) => (data = r));
+      throw promise;
+    };
+  }
+  return cache[key]();
 }

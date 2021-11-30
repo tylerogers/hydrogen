@@ -21,6 +21,7 @@ import {ServerComponentRequest} from './framework/Hydration/ServerComponentReque
 import {dehydrate} from 'react-query/hydration';
 import {getCacheControlHeader} from './framework/cache';
 import type {ServerResponse} from 'http';
+import {resetSuspenseCache} from './foundation/useQuery/hooks';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:
@@ -84,6 +85,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url: URL,
     {context, request, response, template, dev}
   ) {
+    resetSuspenseCache();
     const state = {pathname: url.pathname, search: url.search};
 
     const {ReactApp, componentResponse} = buildReactApp({
@@ -180,6 +182,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url: URL,
     {context, request, response, dev}
   ) {
+    resetSuspenseCache();
     const state = JSON.parse(url.searchParams.get('state') || '{}');
 
     const {ReactApp, componentResponse} = buildReactApp({

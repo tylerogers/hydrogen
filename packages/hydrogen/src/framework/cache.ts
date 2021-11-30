@@ -1,4 +1,3 @@
-import type {QueryKey} from 'react-query';
 import type {CacheOptions} from '../types';
 import {getCache} from './runtime';
 
@@ -28,7 +27,7 @@ export function getCacheControlHeader({dev}: {dev?: boolean}) {
   return dev ? 'cache-control-preview' : 'cache-control';
 }
 
-function hashKey(key: QueryKey): string {
+export function hashKey(key: string | Array<any>): string {
   const rawKey = key instanceof Array ? key : [key];
 
   /**
@@ -50,7 +49,7 @@ function getKeyUrl(key: string) {
  * as the response itself so it can be checked for staleness.
  */
 export async function getItemFromCache(
-  key: QueryKey
+  key: string | Array<any>
 ): Promise<undefined | [any, Response]> {
   const cache = getCache();
   if (!cache) {
@@ -70,7 +69,7 @@ export async function getItemFromCache(
  * Put an item into the cache.
  */
 export async function setItemInCache(
-  key: QueryKey,
+  key: string | Array<any>,
   value: any,
   userCacheOptions?: CacheOptions
 ) {
@@ -100,7 +99,7 @@ export async function setItemInCache(
   await cache.put(request, response);
 }
 
-export async function deleteItemFromCache(key: QueryKey) {
+export async function deleteItemFromCache(key: string | Array<any>) {
   const cache = getCache();
   if (!cache) return;
 
