@@ -19,8 +19,8 @@ import {ServerComponentResponse} from './framework/Hydration/ServerComponentResp
 import {ServerComponentRequest} from './framework/Hydration/ServerComponentRequest.server';
 import {getCacheControlHeader} from './framework/cache';
 import type {ServerResponse} from 'http';
-import {clearRequestCache} from './foundation/useQuery/hooks';
 import {RequestServerProvider} from './foundation/RequestServerProvider';
+import {clearRequestCache} from './foundation/useQuery/hooks';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:

@@ -10,7 +10,11 @@ import {runDelayedFunction} from '../../framework/runtime';
 import {SuspensePromise} from './SuspensePromise';
 import {useRequest} from '../RequestServerProvider/hook';
 
+export interface HydrogenUseQueryOptions {
+  cache: CacheOptions;
+}
 type SuspenseCache = Map<string, SuspensePromise<unknown>>;
+
 let requestCaches: Map<string, SuspenseCache> = new Map();
 
 function getRequestCache(): SuspenseCache {
@@ -23,10 +27,6 @@ function getRequestCache(): SuspenseCache {
     requestCaches.set(requestId, requestCache);
   }
   return requestCache;
-}
-
-export interface HydrogenUseQueryOptions {
-  cache: CacheOptions;
 }
 
 export function clearRequestCache(requestId: string) {
