@@ -50,6 +50,7 @@ export type ShopifyConfig = {
   storeDomain: string;
   storefrontToken: string;
   graphqlApiVersion?: string;
+  requestId?: number;
 };
 
 export type Hook = (

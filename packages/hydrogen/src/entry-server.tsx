@@ -19,7 +19,7 @@ import {ServerComponentResponse} from './framework/Hydration/ServerComponentResp
 import {ServerComponentRequest} from './framework/Hydration/ServerComponentRequest.server';
 import {getCacheControlHeader} from './framework/cache';
 import type {ServerResponse} from 'http';
-import {clearShortTermCache} from './foundation/useQuery/hooks';
+import {clearRequestCache} from './foundation/useQuery/hooks';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:
@@ -34,7 +34,6 @@ const isWorker = Boolean(renderToReadableStream);
  * on the client to hydrate and build the React tree.
  */
 const STREAM_ABORT_TIMEOUT_MS = 3000;
-let requestCount = 0;
 
 const renderHydrogen: ServerHandler = (App, hook) => {
   /**
@@ -47,8 +46,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     {context, request, isReactHydrationRequest, dev}
   ) {
     console.log('\nServer: render');
-    requestCount += 1;
-    clearShortTermCache(`render - ${requestCount}`);
     const state = isReactHydrationRequest
       ? JSON.parse(url.searchParams?.get('state') ?? '{}')
       : {pathname: url.pathname, search: url.search};
@@ -76,6 +73,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
       params = hook(params) || params;
     }
 
+    clearRequestCache(request.requestId);
     return {body, componentResponse, ...params};
   };
 
@@ -88,8 +86,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     {context, request, response, template, dev}
   ) {
     console.log('\nServer: stream');
-    requestCount += 1;
-    clearShortTermCache(`stream - ${requestCount}`);
     const state = {pathname: url.pathname, search: url.search};
 
     const {ReactApp, componentResponse} = buildReactApp({
@@ -140,10 +136,14 @@ const renderHydrogen: ServerHandler = (App, hook) => {
           );
         },
         onCompleteAll() {
-          if (componentResponse.canStream() || response.writableEnded) return;
+          if (componentResponse.canStream() || response.writableEnded) {
+            clearRequestCache(request.requestId);
+            return;
+          }
 
           writeHeadToServerResponse(response, componentResponse, didError);
           if (isRedirect(response)) {
+            clearRequestCache(request.requestId);
             // Redirects found after any async code
             return response.end();
           }
@@ -161,6 +161,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
               dev ? didError : undefined
             );
           }
+          clearRequestCache(request.requestId);
         },
         onError(error: any) {
           didError = error;
@@ -172,6 +173,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
           }
 
           console.error(error);
+          clearRequestCache(request.requestId);
         },
       }
     );
@@ -187,8 +189,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     {context, request, response, dev}
   ) {
     console.log('\nServer: hydrate');
-    requestCount += 1;
-    clearShortTermCache(`hydrate - ${requestCount}`);
     const state = JSON.parse(url.searchParams.get('state') || '{}');
 
     const {ReactApp, componentResponse} = buildReactApp({
@@ -230,10 +230,12 @@ const renderHydrogen: ServerHandler = (App, hook) => {
             componentResponse.cacheControlHeader
           );
           response.end(generateWireSyntaxFromRenderedHtml(writer.toString()));
+          clearRequestCache(request.requestId);
         },
         onError(error: any) {
           didError = error;
           console.error(error);
+          clearRequestCache(request.requestId);
         },
       }
     );

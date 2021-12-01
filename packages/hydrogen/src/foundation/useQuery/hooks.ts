@@ -6,24 +6,34 @@ import {
   setItemInCache,
   hashKey,
 } from '../../framework/cache';
-import {runDelayedFunction, getCache} from '../../framework/runtime';
+import {runDelayedFunction} from '../../framework/runtime';
 import {SuspensePromise} from './SuspensePromise';
+import {useShop} from '..';
 
-const suspensePromises: Map<string, SuspensePromise<unknown>> = new Map();
+type SuspenseCache = Map<string, SuspensePromise<unknown>>;
+let requestCaches: Map<string, SuspenseCache> = new Map();
 
-interface ShortCache {
-  [key: string]: () => unknown;
+function getRequestCache(): SuspenseCache {
+  const {requestId} = useShop();
+  const requestIdStr = requestId ? requestId.toString() : '0';
+  console.log('Request Id: ', requestId);
+
+  let requestCache: SuspenseCache | undefined = requestCaches.get(requestIdStr);
+  if (!requestCache) {
+    requestCache = new Map();
+    requestCaches.set(requestIdStr, requestCache);
+  }
+  return requestCache;
 }
-
-let cache: ShortCache = {};
 
 export interface HydrogenUseQueryOptions {
   cache: CacheOptions;
 }
 
-export function clearShortTermCache(logText: string) {
-  logg(`Clear cache on ${logText} request`);
-  cache = {};
+export function clearRequestCache(requestId: number) {
+  const requestIdStr = requestId ? requestId.toString() : '0';
+  requestCaches.delete(requestIdStr);
+  logg(`Clear cache on ${requestId} request`);
 }
 
 /**
@@ -40,52 +50,18 @@ export function useQuery<T>(
   queryOptions?: HydrogenUseQueryOptions
 ): T {
   console.log(`\nLoading ${findQueryname(key)} query`);
-  const cacheKey = hashKey(key);
+  const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
+  const status = suspensePromise.status;
 
-  if (!cache[cacheKey]) {
-    let data: T;
-    let promise: Promise<void | T>;
-    cache[cacheKey] = () => {
-      if (data !== undefined) {
-        log(`Return short-term cache ${findQueryname(key)} data`);
-        // delete cache[cacheKey];
-        return data;
-      }
-      if (!promise) {
-        promise = cachedQueryFnBuilder(key, queryFn, queryOptions)().then(
-          (r) => {
-            log(`Got ${findQueryname(key)} data`);
-            data = r;
-          }
-        );
-      }
-      throw promise;
-    };
+  if (status === SuspensePromise.PENDING) {
+    throw suspensePromise.promise;
+  } else if (status === SuspensePromise.ERROR) {
+    throw suspensePromise.result;
+  } else if (status === SuspensePromise.SUCCESS) {
+    return suspensePromise.result as T;
   }
-  return cache[cacheKey]() as T;
 
-  // const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
-  // const status = suspensePromise.status;
-
-  // if (status === SuspensePromise.PENDING) {
-  //   throw suspensePromise.promise;
-  // } else if (status === SuspensePromise.ERROR) {
-  //   throw suspensePromise.result;
-  // } else if (status === SuspensePromise.SUCCESS) {
-  //   // If we have Cache, we'll follow the cache maxAge spec before removing from SuspensePromise map
-  //   if (getCache()) {
-  //     setTimeout(() => {
-  //       if (suspensePromises.has(cacheKey)) {
-  //         suspensePromises.delete(cacheKey);
-  //       }
-  //     }, suspensePromise.maxAge);
-  //   } else {
-  //     suspensePromises.delete(cacheKey);
-  //   }
-  //   return suspensePromise.result as T;
-  // }
-
-  // throw 'useQuery - something is really wrong if this throws';
+  throw 'useQuery - something is really wrong if this throws';
 }
 
 /**
@@ -127,13 +103,14 @@ function getSuspensePromise<T>(
   queryOptions?: HydrogenUseQueryOptions
 ): SuspensePromise<T> {
   const cacheKey = hashKey(key);
-  let suspensePromise = suspensePromises.get(cacheKey);
+  const suspenseCache = getRequestCache();
+  let suspensePromise = suspenseCache.get(cacheKey);
   if (!suspensePromise) {
     suspensePromise = new SuspensePromise<T>(
       cachedQueryFnBuilder(key, queryFn, queryOptions),
       queryOptions?.cache?.maxAge
     );
-    suspensePromises.set(cacheKey, suspensePromise);
+    suspenseCache.set(cacheKey, suspensePromise);
     console.log(`${findQueryname(key)} SuspensePromise created`);
   }
   return suspensePromise as SuspensePromise<T>;

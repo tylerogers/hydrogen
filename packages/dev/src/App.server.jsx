@@ -20,7 +20,13 @@ import {preloadPageQueries} from './pages/preloadPageQueries';
 export default function App({...serverState}) {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <ShopifyServerProvider shopifyConfig={shopifyConfig} {...serverState}>
+      <ShopifyServerProvider
+        shopifyConfig={{
+          ...shopifyConfig,
+          requestId: serverState.request.requestId,
+        }}
+        {...serverState}
+      >
         <AppContent serverState={serverState} />
       </ShopifyServerProvider>
     </Suspense>
