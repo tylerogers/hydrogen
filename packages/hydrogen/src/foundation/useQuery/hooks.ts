@@ -8,20 +8,19 @@ import {
 } from '../../framework/cache';
 import {runDelayedFunction} from '../../framework/runtime';
 import {SuspensePromise} from './SuspensePromise';
-import {useShop} from '..';
+import {useRequest} from '../RequestServerProvider/hook';
 
 type SuspenseCache = Map<string, SuspensePromise<unknown>>;
 let requestCaches: Map<string, SuspenseCache> = new Map();
 
 function getRequestCache(): SuspenseCache {
-  const {requestId} = useShop();
-  const requestIdStr = requestId ? requestId.toString() : '0';
+  const {requestId} = useRequest();
   console.log('Request Id: ', requestId);
 
-  let requestCache: SuspenseCache | undefined = requestCaches.get(requestIdStr);
+  let requestCache: SuspenseCache | undefined = requestCaches.get(requestId);
   if (!requestCache) {
     requestCache = new Map();
-    requestCaches.set(requestIdStr, requestCache);
+    requestCaches.set(requestId, requestCache);
   }
   return requestCache;
 }
@@ -30,9 +29,8 @@ export interface HydrogenUseQueryOptions {
   cache: CacheOptions;
 }
 
-export function clearRequestCache(requestId: number) {
-  const requestIdStr = requestId ? requestId.toString() : '0';
-  requestCaches.delete(requestIdStr);
+export function clearRequestCache(requestId: string) {
+  requestCaches.delete(requestId);
   logg(`Clear cache on ${requestId} request`);
 }
 

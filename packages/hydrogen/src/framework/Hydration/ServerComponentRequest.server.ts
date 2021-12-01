@@ -10,7 +10,7 @@ let count = 0;
 
 export class ServerComponentRequest extends Request {
   public cookies: Map<string, string>;
-  public requestId: number;
+  public requestId: string;
 
   constructor(input: any);
   constructor(input: RequestInfo, init?: RequestInit);
@@ -28,7 +28,7 @@ export class ServerComponentRequest extends Request {
 
     // Unique Id for this request - use a uuidv4 later
     count += 1;
-    this.requestId = count;
+    this.requestId = count.toString();
   }
 
   private parseCookies() {

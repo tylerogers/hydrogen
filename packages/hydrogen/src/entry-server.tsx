@@ -20,6 +20,7 @@ import {ServerComponentRequest} from './framework/Hydration/ServerComponentReque
 import {getCacheControlHeader} from './framework/cache';
 import type {ServerResponse} from 'http';
 import {clearRequestCache} from './foundation/useQuery/hooks';
+import {RequestServerProvider} from './foundation/RequestServerProvider';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:
@@ -267,14 +268,16 @@ function buildReactApp({
   const componentResponse = new ServerComponentResponse();
 
   const ReactApp = (props: any) => (
-    <StaticRouter
-      location={{pathname: state.pathname, search: state.search}}
-      context={context}
-    >
-      <HelmetProvider context={helmetContext}>
-        <App {...props} request={request} response={componentResponse} />
-      </HelmetProvider>
-    </StaticRouter>
+    <RequestServerProvider requestId={request.requestId}>
+      <StaticRouter
+        location={{pathname: state.pathname, search: state.search}}
+        context={context}
+      >
+        <HelmetProvider context={helmetContext}>
+          <App {...props} request={request} response={componentResponse} />
+        </HelmetProvider>
+      </StaticRouter>
+    </RequestServerProvider>
   );
 
   return {helmetContext, ReactApp, componentResponse};
@@ -297,6 +300,7 @@ function extractHeadElements(helmetContext: FilledContext) {
 }
 
 function supportsReadableStream() {
+  return false;
   try {
     new ReadableStream();
     return true;
