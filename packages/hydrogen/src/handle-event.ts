@@ -4,7 +4,6 @@ import type {ServerComponentRequest} from './framework/Hydration/ServerComponent
 import {getCacheControlHeader} from './framework/cache';
 import {setContext, setCache, RuntimeContext} from './framework/runtime';
 import {setConfig} from './framework/config';
-import {resetSuspenseCache} from './foundation/useQuery/hooks';
 
 interface HydrogenFetchEvent {
   /**

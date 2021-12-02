@@ -21,7 +21,7 @@ import {ServerComponentRequest} from './framework/Hydration/ServerComponentReque
 import {dehydrate} from 'react-query/hydration';
 import {getCacheControlHeader} from './framework/cache';
 import type {ServerResponse} from 'http';
-import {resetSuspenseCache} from './foundation/useQuery/hooks';
+import {RequestContext} from './framework/RequestContext';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:
@@ -85,7 +85,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url: URL,
     {context, request, response, template, dev}
   ) {
-    resetSuspenseCache();
     const state = {pathname: url.pathname, search: url.search};
 
     const {ReactApp, componentResponse} = buildReactApp({
@@ -182,7 +181,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     url: URL,
     {context, request, response, dev}
   ) {
-    resetSuspenseCache();
     const state = JSON.parse(url.searchParams.get('state') || '{}');
 
     const {ReactApp, componentResponse} = buildReactApp({
@@ -257,19 +255,22 @@ function buildReactApp({
 }) {
   const helmetContext = {} as FilledContext;
   const componentResponse = new ServerComponentResponse();
+  const suspenseCache = {};
 
   const ReactApp = (props: any) => (
-    <StaticRouter
-      location={{pathname: state.pathname, search: state.search}}
-      context={context}
-    >
-      <HelmetProvider context={helmetContext}>
-        <App {...props} request={request} response={componentResponse} />
-      </HelmetProvider>
-    </StaticRouter>
+    <RequestContext.Provider value={{cache: suspenseCache}}>
+      <StaticRouter
+        location={{pathname: state.pathname, search: state.search}}
+        context={context}
+      >
+        <HelmetProvider context={helmetContext}>
+          <App {...props} request={request} response={componentResponse} />
+        </HelmetProvider>
+      </StaticRouter>
+    </RequestContext.Provider>
   );
 
-  return {helmetContext, ReactApp, componentResponse};
+  return {helmetContext, ReactApp, componentResponse, suspenseCache};
 }
 
 function extractHeadElements(helmetContext: FilledContext) {

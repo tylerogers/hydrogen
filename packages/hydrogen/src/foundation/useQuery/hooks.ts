@@ -7,6 +7,7 @@ import {
   setItemInCache,
 } from '../../framework/cache';
 import {runDelayedFunction} from '../../framework/runtime';
+import {useRequest} from '../../framework/RequestContext';
 
 export interface HydrogenUseQueryOptions {
   cache: CacheOptions;
@@ -17,7 +18,7 @@ export interface HydrogenUseQueryOptions {
  */
 export function useQuery<T>(
   /** A string or array to uniquely identify the current query. */
-  key: string | string[],
+  key: string | unknown[],
   /** An asynchronous query function like `fetch` which returns data. */
   queryFn: () => Promise<T>,
   /** Options including `cache` to manage the cache behavior of the sub-request. */
@@ -87,20 +88,14 @@ export function useQuery<T>(
   return {data};
 }
 
-let cache: Record<string, any> = {};
-
-export function resetSuspenseCache() {
-  cache = {};
-}
-
-export default function useData(
+export function useData(
   cacheKey: string | Array<any>,
   fetcher: () => Promise<any>
 ) {
   const key = hashKey(cacheKey);
+  const {cache} = useRequest();
 
   if (!cache[key]) {
-    console.log(`fetching ${key}`);
     let data: any;
     let promise: Promise<any>;
     cache[key] = () => {
