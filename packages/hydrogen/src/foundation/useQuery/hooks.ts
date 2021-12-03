@@ -4,34 +4,13 @@ import {
   getItemFromCache,
   isStale,
   setItemInCache,
-  hashKey,
 } from '../../framework/cache';
 import {runDelayedFunction} from '../../framework/runtime';
-import {SuspensePromise} from './SuspensePromise';
-import {useRequest} from '../RequestServerProvider/hook';
+import {useRenderCacheData} from '../RenderCacheProvider/hook';
 
+import type {RenderCacheResult} from '../RenderCacheProvider/types';
 export interface HydrogenUseQueryOptions {
   cache: CacheOptions;
-}
-type SuspenseCache = Map<string, SuspensePromise<unknown>>;
-
-const requestCaches: Map<string, SuspenseCache> = new Map();
-
-function getRequestCache(): SuspenseCache {
-  const {requestId} = useRequest();
-  console.log('Request Id: ', requestId);
-
-  let requestCache: SuspenseCache | undefined = requestCaches.get(requestId);
-  if (!requestCache) {
-    requestCache = new Map();
-    requestCaches.set(requestId, requestCache);
-  }
-  return requestCache;
-}
-
-export function clearRequestCache(requestId: string) {
-  requestCaches.delete(requestId);
-  logg(`Clear cache on ${requestId} request`);
 }
 
 /**
@@ -46,25 +25,14 @@ export function useQuery<T>(
   queryFn: () => Promise<T>,
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
-): T {
+): RenderCacheResult<T> {
   console.log(`\nLoading ${findQueryname(key)} query`);
-  const suspensePromise = getSuspensePromise<T>(key, queryFn, queryOptions);
-  const status = suspensePromise.status;
-
-  if (status === SuspensePromise.PENDING) {
-    throw suspensePromise.promise;
-  } else if (status === SuspensePromise.ERROR) {
-    throw suspensePromise.result;
-  } else if (status === SuspensePromise.SUCCESS) {
-    return suspensePromise.result as T;
-  }
-
-  throw 'useQuery - something is really wrong if this throws';
+  return useRenderCacheData<T>(
+    key,
+    cachedQueryFnBuilder(key, queryFn, queryOptions)
+  );
 }
 
-/**
- * Preloads the query with suspense support
- */
 export function preloadQuery<T>(
   /** A string or array to uniquely identify the current query. */
   key: QueryKey,
@@ -74,7 +42,11 @@ export function preloadQuery<T>(
   queryOptions?: HydrogenUseQueryOptions
 ): void {
   logg(`\nPreloading ${findQueryname(key)} query`);
-  getSuspensePromise<T>(key, queryFn, queryOptions);
+  useRenderCacheData<T>(
+    key,
+    cachedQueryFnBuilder(key, queryFn, queryOptions),
+    false
+  );
 }
 
 function findQueryname(key: QueryKey) {
@@ -93,24 +65,6 @@ function log(...text: any[]) {
 
 function logg(...text: any[]) {
   console.log('\x1b[32m%s\x1b[0m', ...text);
-}
-
-function getSuspensePromise<T>(
-  key: QueryKey,
-  queryFn: () => Promise<T>,
-  queryOptions?: HydrogenUseQueryOptions
-): SuspensePromise<T> {
-  const cacheKey = hashKey(key);
-  const suspenseCache = getRequestCache();
-  let suspensePromise = suspenseCache.get(cacheKey);
-  if (!suspensePromise) {
-    suspensePromise = new SuspensePromise<T>(
-      cachedQueryFnBuilder(key, queryFn, queryOptions)
-    );
-    suspenseCache.set(cacheKey, suspensePromise);
-    console.log(`${findQueryname(key)} SuspensePromise created`);
-  }
-  return suspensePromise as SuspensePromise<T>;
 }
 
 function cachedQueryFnBuilder<T>(
