@@ -30,27 +30,36 @@ export function useRenderCacheData<T>(
   const cacheKey = hashKey(key);
   const {cache} = useRenderCache();
 
-  console.log('\nRenderCache');
-  Object.keys(cache).forEach((ck) => {
-    console.log(findQueryname(ck));
-  });
-
   if (!cache[cacheKey]) {
     let data: RenderCacheResult<T>;
-    let promise: Promise<RenderCacheResult<T>>;
+    let promise: Promise<RenderCacheResult<T> | void>;
 
     cache[cacheKey] = () => {
-      if (data !== undefined) return data;
+      if (data !== undefined) {
+        console.log(`RenderCache: ${findQueryname(cacheKey)}`);
+        return data as RenderCacheResult<T>;
+      }
       if (!promise) {
+        const startApiTime = +new Date();
         promise = fetcher().then(
-          (r) => (data = {data: r}),
+          (r) => {
+            data = {data: r};
+            console.log(
+              `API: ${findQueryname(cacheKey)} (Took ${
+                +new Date() - startApiTime
+              }ms)`
+            );
+          },
           (e) => (data = {data: e})
         );
       }
-      if (throwPromise) throw promise;
+      return promise;
     };
   }
-  return cache[cacheKey]() as RenderCacheResult<T>;
+
+  const result = cache[cacheKey]();
+  if (result instanceof Promise && throwPromise) throw result;
+  return result as RenderCacheResult<T>;
 }
 
 function findQueryname(key: QueryKey) {

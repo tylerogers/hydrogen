@@ -167,7 +167,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
           }
 
           console.error(error);
-          clearRequestCache(request.requestId);
         },
       }
     );
