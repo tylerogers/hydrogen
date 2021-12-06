@@ -28,7 +28,7 @@ export function useRenderCacheData<T>(
   throwPromise = true
 ): RenderCacheResult<T> {
   const cacheKey = hashKey(key);
-  const {cache} = useRenderCache();
+  const {cache, preloadCache} = useRenderCache();
 
   if (!cache[cacheKey]) {
     let data: RenderCacheResult<T>;
@@ -54,6 +54,11 @@ export function useRenderCacheData<T>(
         );
       }
       return promise;
+    };
+
+    preloadCache[cacheKey] = {
+      fetcher,
+      key,
     };
   }
 

@@ -1,4 +1,4 @@
-import React, {ComponentType, JSXElementConstructor} from 'react';
+import React, {ComponentType, JSXElementConstructor, ReactElement} from 'react';
 import {
   renderToReadableStream,
   pipeToNodeWritable,
@@ -20,6 +20,8 @@ import {ServerComponentRequest} from './framework/Hydration/ServerComponentReque
 import {getCacheControlHeader} from './framework/cache';
 import {ServerResponse} from 'http';
 import {RenderCacheProvider} from './foundation/RenderCacheProvider';
+import {useRenderCacheData} from './foundation/RenderCacheProvider/hook';
+import type {PreloadCache} from './foundation/RenderCacheProvider/types';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:
@@ -34,6 +36,14 @@ const isWorker = Boolean(renderToReadableStream);
  * on the client to hydrate and build the React tree.
  */
 const STREAM_ABORT_TIMEOUT_MS = 3000;
+
+type PreloadQueriesCache = {
+  [key: string]: PreloadCache;
+};
+/**
+ * Where we store query plans for each url request
+ */
+const preloadCaches: PreloadQueriesCache = {};
 
 const renderHydrogen: ServerHandler = (App, hook) => {
   /**
@@ -50,13 +60,14 @@ const renderHydrogen: ServerHandler = (App, hook) => {
       ? JSON.parse(url.searchParams?.get('state') ?? '{}')
       : {pathname: url.pathname, search: url.search};
 
-    const {ReactApp, helmetContext, componentResponse} = buildReactApp({
-      App,
-      state,
-      context,
-      request,
-      dev,
-    });
+    const {ReactApp, helmetContext, componentResponse, preloadCache} =
+      buildReactApp({
+        App,
+        state,
+        context,
+        request,
+        dev,
+      });
 
     const body = await renderApp(ReactApp, state, isReactHydrationRequest);
 
@@ -73,6 +84,8 @@ const renderHydrogen: ServerHandler = (App, hook) => {
       params = hook(params) || params;
     }
 
+    setPreloadCache(state.pathname, preloadCache);
+
     return {body, componentResponse, ...params};
   };
 
@@ -87,7 +100,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     console.log('\nServer: stream');
     const state = {pathname: url.pathname, search: url.search};
 
-    const {ReactApp, componentResponse} = buildReactApp({
+    const {ReactApp, componentResponse, preloadCache} = buildReactApp({
       App,
       state,
       context,
@@ -135,6 +148,8 @@ const renderHydrogen: ServerHandler = (App, hook) => {
           );
         },
         onCompleteAll() {
+          setPreloadCache(state.pathname, preloadCache);
+
           if (componentResponse.canStream() || response.writableEnded) return;
 
           writeHeadToServerResponse(response, componentResponse, didError);
@@ -184,7 +199,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
     console.log('\nServer: hydrate');
     const state = JSON.parse(url.searchParams.get('state') || '{}');
 
-    const {ReactApp, componentResponse} = buildReactApp({
+    const {ReactApp, componentResponse, preloadCache} = buildReactApp({
       App,
       state,
       context,
@@ -223,6 +238,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
             componentResponse.cacheControlHeader
           );
           response.end(generateWireSyntaxFromRenderedHtml(writer.toString()));
+          setPreloadCache(state.pathname, preloadCache);
         },
         onError(error: any) {
           didError = error;
@@ -241,6 +257,10 @@ const renderHydrogen: ServerHandler = (App, hook) => {
   };
 };
 
+function setPreloadCache(requestUrl: string, cache: object) {
+  preloadCaches[requestUrl] = cache as PreloadCache;
+}
+
 function buildReactApp({
   App,
   state,
@@ -257,21 +277,41 @@ function buildReactApp({
   const helmetContext = {} as FilledContext;
   const componentResponse = new ServerComponentResponse();
   const renderCache = {};
+  const preloadCache = {};
 
   const ReactApp = (props: any) => (
-    <RenderCacheProvider cache={renderCache}>
-      <StaticRouter
-        location={{pathname: state.pathname, search: state.search}}
-        context={context}
-      >
-        <HelmetProvider context={helmetContext}>
-          <App {...props} request={request} response={componentResponse} />
-        </HelmetProvider>
-      </StaticRouter>
+    <RenderCacheProvider cache={renderCache} preloadCache={preloadCache}>
+      <PreloadQueryWrapper url={state.pathname}>
+        <StaticRouter
+          location={{pathname: state.pathname, search: state.search}}
+          context={context}
+        >
+          <HelmetProvider context={helmetContext}>
+            <App {...props} request={request} response={componentResponse} />
+          </HelmetProvider>
+        </StaticRouter>
+      </PreloadQueryWrapper>
     </RenderCacheProvider>
   );
 
-  return {helmetContext, ReactApp, componentResponse};
+  return {helmetContext, ReactApp, componentResponse, preloadCache};
+}
+
+function PreloadQueryWrapper({
+  url,
+  children,
+}: {
+  url: string;
+  children: ReactElement;
+}) {
+  const preloadCache = preloadCaches[url];
+  if (preloadCache) {
+    Object.keys(preloadCache).forEach((key) => {
+      const query = preloadCache[key];
+      useRenderCacheData(query.key, query.fetcher, false);
+    });
+  }
+  return children;
 }
 
 function extractHeadElements(helmetContext: FilledContext) {
