@@ -60,6 +60,21 @@ export function useRenderCacheData<T>(
   const result = cache[cacheKey]();
   if (result instanceof Promise && throwPromise) throw result;
   return result as RenderCacheResult<T>;
+
+  // let promise: Promise<RenderCacheResult<T>>;
+
+  //   cache[cacheKey] = () => {
+  //     if (data !== undefined) return data;
+  //     if (!promise) {
+  //       promise = fetcher().then(
+  //         (r) => (data = {data: r}),
+  //         (e) => (data = {data: e})
+  //       );
+  //     }
+  //     throw promise;
+  //   };
+  // }
+  // return cache[cacheKey]() as RenderCacheResult<T>;
 }
 
 function findQueryname(key: QueryKey) {
