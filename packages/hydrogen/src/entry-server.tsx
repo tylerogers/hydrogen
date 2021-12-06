@@ -258,7 +258,24 @@ const renderHydrogen: ServerHandler = (App, hook) => {
 };
 
 function setPreloadCache(requestUrl: string, cache: object) {
+  console.log(`\nSave cache for ${requestUrl}`);
+  Object.keys(cache).forEach((key) => {
+    console.log(findQueryname(key));
+  });
+
   preloadCaches[requestUrl] = cache as PreloadCache;
+}
+
+function logg(...text: any[]) {
+  console.log('\x1b[32m%s\x1b[0m', ...text);
+}
+
+function findQueryname(key: string) {
+  const match = key.match(/query ([^\s\()]*)\s?(|\(\{)/);
+  if (match && match.length > 1) {
+    return match[1];
+  }
+  return '<unknown>';
 }
 
 function buildReactApp({
@@ -306,7 +323,9 @@ function PreloadQueryWrapper({
 }) {
   const preloadCache = preloadCaches[url];
   if (preloadCache) {
+    logg(`Preloading Queries for ${url}`);
     Object.keys(preloadCache).forEach((key) => {
+      console.log(findQueryname(key));
       const query = preloadCache[key];
       useRenderCacheData(query.key, query.fetcher, false);
     });
@@ -331,7 +350,6 @@ function extractHeadElements(helmetContext: FilledContext) {
 }
 
 function supportsReadableStream() {
-  return false;
   try {
     new ReadableStream();
     return true;

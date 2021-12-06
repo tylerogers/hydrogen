@@ -87,7 +87,7 @@ export default function Index({country = {isoCode: 'US'}}) {
   return (
     <Layout hero={<GradientBackground />}>
       <div className="relative mb-12">
-        <DelayIframe delay={900} />
+        {/* <DelayIframe delay={900} /> */}
         <Welcome />
         <div className="bg-white p-12 shadow-xl rounded-xl mb-10">
           {featuredProductsCollection ? (
