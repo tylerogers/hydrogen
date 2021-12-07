@@ -6,7 +6,7 @@ import {
   setItemInCache,
 } from '../../framework/cache';
 import {runDelayedFunction} from '../../framework/runtime';
-import {useRenderCacheData} from '../RenderCacheProvider/hook';
+import {useRenderCacheData, useRenderCache} from '../RenderCacheProvider/hook';
 
 import type {RenderCacheResult} from '../RenderCacheProvider/types';
 export interface HydrogenUseQueryOptions {
@@ -26,7 +26,10 @@ export function useQuery<T>(
   /** Options including `cache` to manage the cache behavior of the sub-request. */
   queryOptions?: HydrogenUseQueryOptions
 ): RenderCacheResult<T> {
-  console.log(`\nLoading ${findQueryname(key)} query`);
+  const {startTimestamp} = useRenderCache();
+  console.log(
+    `\n(${+new Date() - startTimestamp}ms) Loading ${findQueryname(key)} query`
+  );
   return useRenderCacheData<T>(
     key,
     cachedQueryFnBuilder(key, queryFn, queryOptions)

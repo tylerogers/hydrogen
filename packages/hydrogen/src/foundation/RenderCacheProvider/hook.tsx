@@ -28,7 +28,7 @@ export function useRenderCacheData<T>(
   throwPromise = true
 ): RenderCacheResult<T> {
   const cacheKey = hashKey(key);
-  const {cache, preloadCache} = useRenderCache();
+  const {cache, preloadCache, startTimestamp} = useRenderCache();
 
   if (!cache[cacheKey]) {
     let data: RenderCacheResult<T>;
@@ -36,7 +36,11 @@ export function useRenderCacheData<T>(
 
     cache[cacheKey] = () => {
       if (data !== undefined) {
-        console.log(`RenderCache: ${findQueryname(cacheKey)}`);
+        console.log(
+          `(${+new Date() - startTimestamp}ms) RenderCache: ${findQueryname(
+            cacheKey
+          )}`
+        );
         return data as RenderCacheResult<T>;
       }
       if (!promise) {
@@ -45,9 +49,9 @@ export function useRenderCacheData<T>(
           (r) => {
             data = {data: r};
             console.log(
-              `API: ${findQueryname(cacheKey)} (Took ${
-                +new Date() - startApiTime
-              }ms)`
+              `(${+new Date() - startTimestamp}ms) API: ${findQueryname(
+                cacheKey
+              )} (Took ${+new Date() - startApiTime}ms)`
             );
           },
           (e) => (data = {data: e})

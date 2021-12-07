@@ -4,4 +4,5 @@ import type {RenderCacheProviderProps} from './types';
 export const RenderCacheContext = createContext<RenderCacheProviderProps>({
   cache: {},
   preloadCache: {},
+  startTimestamp: 0,
 });

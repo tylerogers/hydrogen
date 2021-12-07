@@ -51,11 +51,12 @@ function getKeyUrl(key: string) {
 export async function getItemFromCache(
   key: QueryKey
 ): Promise<undefined | [any, Response]> {
-  log(`get item from cache ${findQueryname(key)}`);
   const cache = getCache();
   if (!cache) {
     return;
   }
+
+  log(`get item from cache ${findQueryname(key)}`);
 
   const url = getKeyUrl(hashKey(key));
   const request = new Request(url);
@@ -90,11 +91,12 @@ export async function setItemInCache(
   value: any,
   userCacheOptions?: CacheOptions
 ) {
-  log(`set item in cache ${findQueryname(key)}`);
   const cache = getCache();
   if (!cache) {
     return;
   }
+
+  log(`set item in cache ${findQueryname(key)}`);
 
   const url = getKeyUrl(hashKey(key));
   const request = new Request(url);

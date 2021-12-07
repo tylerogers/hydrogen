@@ -5,6 +5,7 @@ import type {RenderCacheProviderProps} from './types';
 export function RenderCacheProvider({
   cache,
   preloadCache,
+  startTimestamp,
   children,
 }: RenderCacheProviderProps) {
   return (
@@ -12,6 +13,7 @@ export function RenderCacheProvider({
       value={{
         cache,
         preloadCache,
+        startTimestamp,
       }}
     >
       {children}

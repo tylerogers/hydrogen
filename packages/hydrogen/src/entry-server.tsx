@@ -293,7 +293,11 @@ function buildReactApp({
   const preloadCache = {};
 
   const ReactApp = (props: any) => (
-    <RenderCacheProvider cache={renderCache} preloadCache={preloadCache}>
+    <RenderCacheProvider
+      cache={renderCache}
+      preloadCache={preloadCache}
+      startTimestamp={+new Date()}
+    >
       <PreloadQueryWrapper url={state.pathname}>
         <StaticRouter
           location={{pathname: state.pathname, search: state.search}}

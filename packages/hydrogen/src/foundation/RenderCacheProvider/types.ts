@@ -15,6 +15,7 @@ export type RenderCacheProviderProps = {
   /** A cache to hold all queries performed within a render request */
   cache: RenderCache;
   preloadCache: PreloadCache;
+  startTimestamp: number;
   children?: React.ReactNode;
 };
 
