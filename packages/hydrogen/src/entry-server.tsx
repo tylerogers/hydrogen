@@ -259,10 +259,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
 
 function setPreloadCache(requestUrl: string, cache: object) {
   console.log(`\nSave cache for ${requestUrl}`);
-  Object.keys(cache).forEach((key) => {
-    console.log(findQueryname(key));
-  });
-
   preloadCaches[requestUrl] = cache as PreloadCache;
 }
 
