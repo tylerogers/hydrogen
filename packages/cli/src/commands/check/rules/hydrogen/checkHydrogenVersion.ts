@@ -1,6 +1,6 @@
 import semver from 'semver';
 import {Env, CheckResult} from '../../../../types';
-import addHydrogen from '../../../addons/hydrogen';
+import addHydrogen from '../../../add/hydrogen';
 
 const HYDROGEN_MIN_VERSION = '0.0.6';
 
