@@ -1,16 +1,16 @@
 import React, {ComponentType, JSXElementConstructor} from 'react';
 import {
-  renderToReadableStream,
-  pipeToNodeWritable,
   // @ts-ignore
-} from 'react-dom/unstable-fizz';
+  renderToPipeableStream, // Only available in Node context
+  // @ts-ignore
+  renderToReadableStream, // Only available in Browser/Worker context
+} from 'react-dom/server';
 import {renderToString} from 'react-dom/server';
 import {getErrorMarkup} from './utilities/error';
 import ssrPrepass from 'react-ssr-prepass';
 import {StaticRouter} from 'react-router-dom';
 import type {ServerHandler} from './types';
 import {HydrationContext} from './framework/Hydration/HydrationContext.server';
-import type {ReactQueryHydrationContext} from './foundation/ShopifyProvider/types';
 import {generateWireSyntaxFromRenderedHtml} from './framework/Hydration/wire.server';
 import {FilledContext, HelmetProvider} from 'react-helmet-async';
 import {Html} from './framework/Hydration/Html';
@@ -18,9 +18,9 @@ import {HydrationWriter} from './framework/Hydration/writer.server';
 import {Renderer, Hydrator, Streamer} from './types';
 import {ServerComponentResponse} from './framework/Hydration/ServerComponentResponse.server';
 import {ServerComponentRequest} from './framework/Hydration/ServerComponentRequest.server';
-import {dehydrate} from 'react-query/hydration';
 import {getCacheControlHeader} from './framework/cache';
-import type {ServerResponse} from 'http';
+import {ServerResponse} from 'http';
+import {RenderCacheProvider} from './foundation/RenderCacheProvider';
 
 /**
  * react-dom/unstable-fizz provides different entrypoints based on runtime:
@@ -55,7 +55,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
       state,
       context,
       request,
-      dev,
     });
 
     const body = await renderApp(ReactApp, state, isReactHydrationRequest);
@@ -91,7 +90,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
       state,
       context,
       request,
-      dev,
     });
 
     response.socket!.on('error', (error: any) => {
@@ -102,13 +100,12 @@ const renderHydrogen: ServerHandler = (App, hook) => {
 
     const head = template.match(/<head>(.+?)<\/head>/s)![1];
 
-    const {startWriting, abort} = pipeToNodeWritable(
+    const {pipe, abort} = renderToPipeableStream(
       <Html head={head}>
         <ReactApp {...state} />
       </Html>,
-      response,
       {
-        onReadyToStream() {
+        onCompleteShell() {
           /**
            * TODO: This assumes `response.cache()` has been called _before_ any
            * queries which might be caught behind Suspense. Clarify this or add
@@ -129,7 +126,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
 
           startWritingHtmlToServerResponse(
             response,
-            startWriting,
+            pipe,
             dev ? didError : undefined
           );
         },
@@ -151,7 +148,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
           } else {
             startWritingHtmlToServerResponse(
               response,
-              startWriting,
+              pipe,
               dev ? didError : undefined
             );
           }
@@ -187,7 +184,6 @@ const renderHydrogen: ServerHandler = (App, hook) => {
       state,
       context,
       request,
-      dev,
     });
 
     response.socket!.on('error', (error: any) => {
@@ -198,11 +194,10 @@ const renderHydrogen: ServerHandler = (App, hook) => {
 
     const writer = new HydrationWriter();
 
-    const {startWriting, abort} = pipeToNodeWritable(
+    const {pipe, abort} = renderToPipeableStream(
       <HydrationContext.Provider value={true}>
         <ReactApp {...state} />
       </HydrationContext.Provider>,
-      writer,
       {
         /**
          * When hydrating, we have to wait until `onCompleteAll` to avoid having
@@ -210,7 +205,7 @@ const renderHydrogen: ServerHandler = (App, hook) => {
          */
         onCompleteAll() {
           // Tell React to start writing to the writer
-          startWriting();
+          pipe(writer);
 
           // Tell React that the writer is ready to drain, which sometimes results in a last "chunk" being written.
           writer.drain();
@@ -244,26 +239,31 @@ function buildReactApp({
   state,
   context,
   request,
-  dev,
 }: {
   App: ComponentType;
   state: any;
   context: any;
   request: ServerComponentRequest;
-  dev: boolean | undefined;
 }) {
+  const renderCache = {};
   const helmetContext = {} as FilledContext;
   const componentResponse = new ServerComponentResponse();
+  const hydrogenServerProps = {
+    request,
+    response: componentResponse,
+  };
 
   const ReactApp = (props: any) => (
-    <StaticRouter
-      location={{pathname: state.pathname, search: state.search}}
-      context={context}
-    >
-      <HelmetProvider context={helmetContext}>
-        <App {...props} request={request} response={componentResponse} />
-      </HelmetProvider>
-    </StaticRouter>
+    <RenderCacheProvider cache={renderCache}>
+      <StaticRouter
+        location={{pathname: state.pathname, search: state.search}}
+        context={context}
+      >
+        <HelmetProvider context={helmetContext}>
+          <App {...props} {...hydrogenServerProps} />
+        </HelmetProvider>
+      </StaticRouter>
+    </RenderCacheProvider>
   );
 
   return {helmetContext, ReactApp, componentResponse};
@@ -367,14 +367,14 @@ function renderAppFromBufferedStream(
     } else {
       const writer = new HydrationWriter();
 
-      const {startWriting} = pipeToNodeWritable(app, writer, {
+      const {pipe} = renderToPipeableStream(app, {
         /**
          * When hydrating, we have to wait until `onCompleteAll` to avoid having
          * `template` and `script` tags inserted and rendered as part of the hydration response.
          */
         onCompleteAll() {
           // Tell React to start writing to the writer
-          startWriting();
+          pipe(writer);
 
           // Tell React that the writer is ready to drain, which sometimes results in a last "chunk" being written.
           writer.drain();
@@ -408,26 +408,15 @@ async function renderAppFromStringWithPrepass(
   state: any,
   isReactHydrationRequest?: boolean
 ) {
-  const hydrationContext: ReactQueryHydrationContext = {};
-
   const app = isReactHydrationRequest ? (
     <HydrationContext.Provider value={true}>
-      <ReactApp hydrationContext={hydrationContext} {...state} />
+      <ReactApp {...state} />
     </HydrationContext.Provider>
   ) : (
-    <ReactApp hydrationContext={hydrationContext} {...state} />
+    <ReactApp {...state} />
   );
 
   await ssrPrepass(app);
-
-  /**
-   * Dehydrate all the queries made during the prepass above and store
-   * them in the context object to be used for the next render pass.
-   * This prevents rendering the Suspense fallback in `renderToString`.
-   */
-  if (hydrationContext.queryClient) {
-    hydrationContext.dehydratedState = dehydrate(hydrationContext.queryClient);
-  }
 
   const body = renderToString(app);
 
@@ -440,7 +429,7 @@ export default renderHydrogen;
 
 function startWritingHtmlToServerResponse(
   response: ServerResponse,
-  startWriting: () => void,
+  pipe: (r: ServerResponse) => void,
   error?: Error
 ) {
   if (!response.headersSent) {
@@ -448,7 +437,7 @@ function startWritingHtmlToServerResponse(
     response.write('<!DOCTYPE html>');
   }
 
-  startWriting();
+  pipe(response);
 
   if (error) {
     // This error was delayed until the headers were properly sent.
