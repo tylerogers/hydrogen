@@ -49,7 +49,9 @@ export class Workspace {
   }
 
   async commit() {
-    await this.gitInit();
+    try {
+      await this.gitInit();
+    } catch {}
 
     const additionalScripts: Record<string, string> = {};
     const additionalConfigs: Record<string, string> = {};

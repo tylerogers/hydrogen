@@ -48,7 +48,11 @@ export async function init(env: Env) {
   }
 
   if (template === Template.Default) {
-    const templateDir = join(__dirname, 'templates', 'template-hydrogen');
+    const templateDir = join(
+      __dirname,
+      'templates',
+      'default-starter-template'
+    );
     const files = readdirSync(templateDir);
 
     for await (const file of files) {

@@ -15,7 +15,7 @@ interface ModuleType {
   default: (env: Env) => Promise<void>;
 }
 
-(async () => {
+export async function init(commandConfig?: any) {
   const rawInputs = process.argv.slice(2);
   const {root, ...inputs} = parseCliArguments(rawInputs);
   const ui = new Cli();
@@ -23,6 +23,8 @@ interface ModuleType {
   const config = (await loadConfig('hydrogen', {root})) || {};
   const workspace = new Workspace({root, ...config});
   const fs = new Fs(root);
+
+  inputs.command = commandConfig ? commandConfig.command : inputs.command;
 
   if (!inputs.command) {
     ui.say(`Missing command input`, {error: true});
@@ -43,10 +45,7 @@ interface ModuleType {
   if (inputs.command === 'init') {
     await workspace.commit();
   }
-})().catch((error) => {
-  logger(error);
-  process.exitCode = 1;
-});
+}
 
 class Command {
   private logger: debug.Debugger;

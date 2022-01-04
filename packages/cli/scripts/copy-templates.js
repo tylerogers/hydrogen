@@ -5,7 +5,7 @@ const glob = require('glob');
 
 function copyFiles() {
   glob(
-    resolve(__dirname, '../../create-hydrogen-app/template-hydrogen/*'),
+    resolve(__dirname, '../../../examples/*'),
     {
       dot: true,
     },
@@ -20,9 +20,10 @@ function copyFiles() {
         }
 
         const dest = file.replace(
-          'create-hydrogen-app/template-hydrogen',
-          'cli/dist/commands/init/templates/template-hydrogen'
+          'examples',
+          'packages/cli/dist/commands/init/templates'
         );
+
         fs.copy(resolve(file), resolve(dest), (copyErr) => {
           if (copyErr) {
             console.error(file, dest, copyErr);
