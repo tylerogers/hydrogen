@@ -1,35 +1,7 @@
-import debug from 'debug';
-import {Workspace} from './workspace';
-import {Ui} from './ui';
-import {Fs, FileResult} from './fs';
-
-import {Feature} from './utilities/feature';
-
-type Hooks = {
-  onCommit: (env: Env) => Promise<void>;
-  onUpdateFile: (file: FileResult) => Promise<void>;
-};
-export interface Env<Context = {}> {
-  ui: Ui;
-  workspace: Workspace;
-  fs: Fs;
-  context?: Context;
-  logger: debug.Debugger;
-  hooks: Hooks;
-}
-
 export enum ComponentType {
   Client = 'React client component',
   Shared = 'React shared component',
   Server = 'React server component',
-}
-
-export interface TemplateOptions {
-  ifFeature(feature: Feature, output: string): string;
-  features: Feature[];
-  storeDomain: string;
-  storefrontToken: string;
-  name: string;
 }
 
 export interface CheckResult {
@@ -44,7 +16,7 @@ export interface CheckResult {
   /**link to learn more about the check **/
   link?: string;
   /** optional function to correct the problems in the current project **/
-  fix?: (env: Env) => void;
+  fix?: () => void;
 }
 
-export type Loggable = string | ((env: Env) => string);
+export type Loggable = string | (() => string);

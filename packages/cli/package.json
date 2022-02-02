@@ -12,8 +12,8 @@
   },
   "main": "./dist/index.js",
   "bin": {
-    "hydrogen": "./bin/hydrogen",
-    "h2": "./bin/hydrogen",
+    "h2": "./bin/dev",
+    "hydrogen": "./bin/run",
     "create-hydrogen": "./bin/create-hydrogen",
     "create-hydrogen-app": "./bin/create-hydrogen"
   },
@@ -30,6 +30,21 @@
     "url": "git+https://github.com/Shopify/hydrogen.git",
     "directory": "packages/cli"
   },
+  "oclif": {
+    "bin": "hydrogen",
+    "dirname": "hydrogen",
+    "commands": "./dist/commands",
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-plugins"
+    ],
+    "topicSeparator": " ",
+    "topics": {
+      "hello": {
+        "description": "Say hello to the world and others"
+      }
+    }
+  },
   "dependencies": {
     "@miniflare/cache": "^2.2.0",
     "@miniflare/core": "^2.2.0",
@@ -37,14 +52,20 @@
     "@miniflare/shared": "^2.2.0",
     "@miniflare/storage-memory": "^2.2.0",
     "@miniflare/web-sockets": "^2.2.0",
+    "@oclif/core": "^1",
+    "@oclif/plugin-help": "^5",
+    "@oclif/plugin-plugins": "^2.0.1",
     "@shopify/ast-utilities": "^1.2.0",
     "@shopify/prettier-config": "^1.1.2",
     "@types/debug": "^4.1.7",
+    "@types/degit": "^2.8.3",
     "chalk": "^4.1.2",
     "change-case": "^4.1.2",
+    "conf": "^10.1.1",
     "connect": "^3.7.0",
     "cosmiconfig": "^7.0.1",
     "debug": "^4.3.2",
+    "degit": "^2.8.4",
     "fs-extra": "^10.0.0",
     "get-port": "^5.1.1",
     "glob": "^7.2.0",

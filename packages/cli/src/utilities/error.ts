@@ -1,4 +1,4 @@
-import {Loggable, Env} from '../types';
+import {Loggable} from '../types';
 
 interface ErrorOptions {
   title?: string;
@@ -39,50 +39,46 @@ export class MissingDependencyError extends HelpfulError {
   }
 }
 
-export function logError(error: any, env: Env) {
-  env.ui.say(error.title ?? 'An unexpected error occurred', {
+export function logError(
+  error: Error & ErrorOptions,
+  log: (message: string, options?: any) => void
+) {
+  log(error.title ?? error.message ?? 'An unexpected error occurred', {
     error: true,
     breakAfter: true,
   });
 
   if (isHelpfulError(error)) {
     if (error.content) {
-      env.ui.say('What happened?', {strong: true});
-      env.ui.say(
-        typeof error.content === 'string' ? error.content : error.content(env),
-        {breakAfter: true}
-      );
+      log('What happened?', {strong: true});
+      log(typeof error.content === 'string' ? error.content : error.content(), {
+        breakAfter: true,
+      });
     }
 
     if (error.suggestion) {
-      env.ui.say('What do I do next?', {strong: true});
-      env.ui.say(
+      log('What do I do next?', {strong: true});
+      log(
         typeof error.suggestion === 'string'
           ? error.suggestion
-          : error.suggestion(env),
+          : error.suggestion(),
         {breakAfter: true}
       );
     }
 
-    env.ui.say('Still experiencing issues?', {strong: true});
+    log('Still experiencing issues?', {strong: true});
   }
-  env.ui.say(
+  log(
     'Help us make Hydrogen better by reporting this error so we can improve this message and/or fix the error.'
   );
-  env.ui.say(
-    '- Chat with us on Discord: https://discord.com/invite/ppSbThrFaS'
-  );
-  env.ui.say(
-    '- Create an issue in GitHub: https://github.com/Shopify/hydrogen/issues/new'
+  log('- Chat with us on Discord: https://discord.com/invite/ppSbThrFaS');
+  log(
+    '- Create an issue in GitHub: https://github.com/Shopify/hydrogen/issues/new',
+    {breakAfter: true}
   );
 
-  env.ui.say('Error stack:', {strong: true});
-  env.ui.say(error.stack);
+  log('Error stack:', {strong: true});
+  if (error.stack) {
+    log(error.stack, {breakAfter: true});
+  }
 }
-
-// TODO: Make these more meaningful and add logging behavior
-export class BaseError extends Error {}
-export class NotImplementedError extends BaseError {}
-export class InputError extends BaseError {}
-export class UnknownError extends BaseError {}
-export class RunError extends BaseError {}
